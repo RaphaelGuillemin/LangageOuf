@@ -1,0 +1,208 @@
+--------------------------------------------------------------------------------
+-- Fichier pour les tests unitaires
+--
+-- Vous pouvez tester ce fichier en chargeant le fichier Main.hs dans GHCi
+-- et en utilisant la fonctions unittests avec le nom du fichier.
+
+-- Exemple :
+
+-- GHCi, version 8.2.2: http://www.haskell.org/ghc/  :? for help
+-- Prelude> :l Main.hs 
+-- [1 of 3] Compiling Parseur          ( Parseur.hs, interpreted )
+-- [2 of 3] Compiling Eval             ( Eval.hs, interpreted )
+-- [3 of 3] Compiling Main             ( Main.hs, interpreted )
+--  Ok, three modules loaded.
+-- *Main> unittests "unittests.ouf"
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Les définitions et expressions sont lues et exécutées dans l'ordre.
+-- L'environnement global est donc possiblement modifié
+-- à chaque définition / expression 
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Pour ce fichier, il y a deux ajouts dans la syntaxe. Ceci est déjà implanté
+-- pour vous dans Main.hs
+
+-- La forme spéciale :check-equal: prend deux Sexp, les évalue et les compare
+-- Chaque Sexp est exécuté avec le même environnement global
+
+-- La forme spéciale :check-error: prend une Sexp et s'attend à recevoir une
+-- erreur (le constructeur Left du datatype Either)
+
+-- Ces formes spéciales ne modifient *PAS* l'environnement global (ce dernier
+-- est restoré après évaluation)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Section Variables, fonctions et primitives
+-- Barème : 6 points
+
+--  Quelques définitions utiles
+(define x 4)
+(define y 2)
+
+-- Test les variables et primitives
+(:check-equal: x 4)
+(:check-equal: y 2)
+(:check-equal: (+ x y) 6)
+(:check-equal: (* x y) 8)
+(:check-equal: (- x y) 2)
+(:check-error: u) -- aucune définition pour u
+
+(define foo (lambda (y) y))
+(define bar (lambda (a b c) a))
+
+(:check-equal: (foo 1) 1)
+(:check-equal: (bar 4 5 6) 4)
+(:check-equal: (((bar 4) 5) 6) 4)
+(:check-error: (lambda () 2)) -- Il manque le paramètre
+(:check-error: (bar 1 2 3 4)) -- Trop d'arguments
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Section Let (ici non mutuellement récursif)
+-- Barème 3 points
+(:check-equal: (let ((a 1)) a) 1)
+(:check-equal: (let () 1) 1)
+(:check-error: (let 1))
+
+-- Les définitions du let ne doivent pas être visible
+-- hors du let
+(let ((a 1)) a)
+(:check-error: a)
+
+-- test une définition locale de x et y
+(:check-equal: (let ((x 3) (y 7)) (+ x y)) 10)
+
+-- test qu'on voit toujours la définition de x du début
+(:check-equal: (let ((a x) (y 7)) (+ x y)) 11)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Section Fermetures
+-- Barème 1 point
+
+-- Le v dans le let doit être mémorisé par la fonction
+-- Mais il n'est plus accessible au niveau global
+(define baz (let ((v 1)) (lambda (x) v)))
+(:check-equal: (baz 0) 1)
+(:check-error: v)
+
+-- Le v ne doit pas être dans l'environnement global
+-- après l'appel de la fonction
+(baz 0)
+(:check-error: v)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Section Data et Case
+-- Barème 3 points
+
+(data Bool (True) (False))
+(data Maybe (Nothing) (Just Int))
+(data List (Nil) (Cons Int List))
+
+-- Deux objets fait des mêmes constructeurs avec les mêmes arguments sont
+-- identiques
+(:check-equal: True True)
+(:check-equal: False False)
+(:check-equal: (Cons 3 Nil) (Cons 3 Nil))
+(:check-equal: Nothing Nothing)
+(:check-equal: (Cons 3 (Cons 2 Nil))
+               (let ((a (Cons 2 Nil)) (b (Cons 3 a))) b))
+
+-- Fournir des arguments en trop à un construteur est une erreur
+(:check-error: (True 2))
+(:check-error: (Cons 2 4 Nil))
+
+-- Il est possible de faire du currying avec un constructeur
+(:check-equal: (let ((a (Cons 2))) (a Nil))
+               (Cons 2 Nil))
+
+(define l (Cons 2 (Cons 3 Nil)))
+(define if (lambda (test iftrue iffalse)
+             (case test (((True) iftrue) ((False) iffalse)))))
+
+(:check-equal: (case l (((Cons a b) a))) 2)
+(:check-equal: (if True 1 0) 1)
+
+-- Le nombre de variables du case doit être en lien avec l'objet
+(:check-error: (case (Cons 3 Nil) (((Cons a b c) 0))))
+(:check-error: (case (Cons 3 Nil) (((Cons a) 0))))
+
+-- Case ne peut pas être fait sur un nombre ou une fonction
+(:check-error: (case + (((Nil) 0))))
+(:check-error: (case 24 (((24) 0))))
+--------------------------------------------------------------------------------
+
+-- BRAVO, À CE STADE VOUS AVEZ UN ÉVALUATEUR FONCTIONNEL POUR LA PORTÉE STATIQUE
+-- Vous avez potentiellement 13 points et 3 pour le rapport (16 / 20)
+
+--------------------------------------------------------------------------------
+-- Section Portée dynamique
+-- Barème 2 points
+
+(define myX (lambda (y) x)) -- Fait référence au x du tout début
+
+(ouf scope x dynamic)
+
+-- Pour l'instant les deux portées donnent le même résultat
+(:check-equal: x 4)
+
+-- Test de portée dynamique
+(:check-equal: (let ((x 0)) (myX 0)) 0)
+
+(ouf scope x lexical)
+
+-- Ici zz est capté en portée lexicale,
+-- mais en porté dynamique il n'y aura plus de zz de défini
+-- après le let.
+-- Attention, l'instruction (ouf scope ...) n'a d'effet que lorsqu'on évalue
+-- une variable, pas lorsqu'on doit créer une fermeture
+
+(ouf scope zz dynamic) 
+(define closure (let ((zz 42)) (lambda (u) zz)))
+(:check-error: (closure 0)) -- Il n'y a pas de zz dans l'environnement dynamique
+
+(ouf scope zz lexical)
+(:check-equal: (closure 0) 42)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Section Set
+-- Barème 1 points
+
+-- Par défaut tout est immuable
+(:check-error: (set x 0))
+(:check-equal: (myX 0) 4)
+
+-- Test ouf mutability
+(ouf mutability x variable)
+(set x 0)
+(:check-equal: x 0)
+(:check-equal: (myX 0) 0)
+(ouf mutability x constant)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Section Die Hard ala Bruce Willis
+-- Barème 1 points
+
+-- Les clauses d'un let sont évaluées dans l'ordre
+-- Donc b n'est pas connu lorsqu'on évalue a
+(:check-error: (let ((a b) (b 4)) a))
+
+-- Les clauses d'un let sont évaluées dans l'ordre, sauf que ici
+-- le x doit cacher le x global car le let est mutuellement récursif
+-- Mais comme il n'est pas défini avant a, cela est une erreur
+(:check-error: (let ((a x) (x 0)) a))
+
+-- Fonctions mutuellement récursives
+(:check-equal: (let ((f (lambda (x) (- (g x) x)))
+                     (g (lambda (y) 4)))
+                   (f 5))
+               -1)
+
+--------------------------------------------------------------------------------
