@@ -87,6 +87,57 @@ specialForm2Exp ((SSym "lambda") :
                  (ELam (head params') body')
                  (tail params')
 
+specialForm2Exp ((SSym "define") :
+                 (SList params) :
+                 body :
+                 []) = do
+  body' <- sexp2Exp body
+  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
+  return $ foldl (\b s -> ELam s b)
+                 (ELam (head params') body')
+                 (tail params') --definir ce que renvoit la fonction ici
+
+specialForm2Exp ((SSym "let") :
+                 (SList params) :
+                 body :
+                 []) = do
+  body' <- sexp2Exp body
+  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
+  return $ foldl (\b s -> ELam s b)
+                 (ELam (head params') body')
+                 (tail params') --definir ce que renvoit la fonction ici
+
+specialForm2Exp ((SSym "case") :
+                 (SList params) :
+                 body :
+                 []) = do
+  body' <- sexp2Exp body
+  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
+  return $ foldl (\b s -> ELam s b)
+                 (ELam (head params') body')
+                 (tail params') --definir ce que renvoit la fonction ici
+
+specialForm2Exp ((SSym "data") :
+                 (SList params) :
+                 body :
+                 []) = do
+  body' <- sexp2Exp body
+  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
+  return $ foldl (\b s -> ELam s b)
+                 (ELam (head params') body')
+                 (tail params') --definir ce que renvoit la fonction ici
+
+specialForm2Exp ((SSym "set") :
+                 (SList params) :
+                 body :
+                 []) = do
+  body' <- sexp2Exp body
+  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
+  return $ foldl (\b s -> ELam s b)
+                 (ELam (head params') body')
+                 (tail params')  --definir ce que renvoit la fonction ici
+
+
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
 
