@@ -66,9 +66,29 @@ sexp2Exp (SList (func : [])) =
   Left "Function application must provide at least one parameter"
 
 -- Il faut écrire le cas pour les fonctions
-sexp2Exp (SList (func : args)) = Left "Vous devez compléter cette partie"
+sexp2Exp (SList (func : args)) = do
+  func' <- var2Symbol func
+  args' <- argsRecursif (args)
+  return (EApp (EVar func') args')
+  
+ --Right (EApp (EVar (var2Symbol func)) (argsRecursif args))
 
 sexp2Exp _ = Left "Erreur de syntaxe"
+argsRecursif :: [Sexp] -> Either Error Exp
+argsRecursif [] = Left "Function application must provide at least one parameter"
+argsRecursif (x:[]) = do
+  x' <- var2Symbol x
+  x'' <- Right (EVar (x'))
+  return x''
+argsRecursif (x:xs) = do
+  x' <- var2Symbol x
+  x'' <- Right (EVar (x'))
+  args' <- argsRecursif xs
+  return (EApp x'' args')
+
+  --Right (EApp (EVar x) (argsRecursif xs))
+
+
 
 -- Il faut compléter cette fonction qui gère
 -- toutes les formes spéciales (lambda, let ...)
@@ -88,55 +108,15 @@ specialForm2Exp ((SSym "lambda") :
                  (tail params')
 
 specialForm2Exp ((SSym "define") :
-                 (SList params) :
-                 body :
-                 []) = do
-  body' <- sexp2Exp body
-  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
-  return $ foldl (\b s -> ELam s b)
-                 (ELam (head params') body')
-                 (tail params') --definir ce que renvoit la fonction ici
+                 []) = Left "Syntax Error : No parameter"
 
-specialForm2Exp ((SSym "let") :
-                 (SList params) :
-                 body :
-                 []) = do
-  body' <- sexp2Exp body
-  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
-  return $ foldl (\b s -> ELam s b)
-                 (ELam (head params') body')
-                 (tail params') --definir ce que renvoit la fonction ici
-
-specialForm2Exp ((SSym "case") :
-                 (SList params) :
-                 body :
-                 []) = do
-  body' <- sexp2Exp body
-  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
-  return $ foldl (\b s -> ELam s b)
-                 (ELam (head params') body')
-                 (tail params') --definir ce que renvoit la fonction ici
-
-specialForm2Exp ((SSym "data") :
-                 (SList params) :
-                 body :
-                 []) = do
-  body' <- sexp2Exp body
-  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
-  return $ foldl (\b s -> ELam s b)
-                 (ELam (head params') body')
-                 (tail params') --definir ce que renvoit la fonction ici
-
-specialForm2Exp ((SSym "set") :
-                 (SList params) :
-                 body :
-                 []) = do
-  body' <- sexp2Exp body
-  params' <- sequence  $ reverse $ map var2Symbol params --definir ce qui va ici
-  return $ foldl (\b s -> ELam s b)
-                 (ELam (head params') body')
-                 (tail params')  --definir ce que renvoit la fonction ici
-
+specialForm2Exp ((SSym "define") :
+                 (SSym sym) :
+                  (SNum a):
+                  []) = do
+                    sym' <- var2Symbol (SSym sym)
+                    a' <- sexp2Exp (SNum a)
+                    return (EDefine sym' a')
 
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
@@ -220,7 +200,13 @@ env0 = insertVars envEmpty primDef
 -- avec define ou data ou lorsque les variables sont
 -- modifiées par set par exemple.
 evalGlobal :: Env -> Exp -> Either Error (Env, Value)
-evalGlobal env (EDefine s e) = Left "Vous devez compléter cette partie"  
+
+evalGlobal env (EDefine s e) = 
+  case eval env e of
+    Left m -> Left m
+    Right (e, v) -> Right (insertVar env s v, v)
+    
+
 evalGlobal env (EData t cs) = Left "Vous devez compléter cette partie"
 evalGlobal env e = eval env e -- Autre que Define et Data, eval prend le relais
 
@@ -233,15 +219,16 @@ eval env (EVar sym) = do
   v <- lookupVar env sym
   return (env, v)
 
-eval env (ESet sym e) = Left "Vous devez compléter cette partie"
+eval env (ESet sym e) = Left "a"
   
-eval env (ELam sym body) = Left "Vous devez compléter cette partie"
-eval env (EApp func arg) = Left "Vous devez compléter cette partie"
+eval env (ELam sym body) = Left "b"
+
+eval env (EApp func arg) = Left "c"
        
-eval env (ELet decls e) = Left "Vous devez compléter cette partie"
+eval env (ELet decls e) = Left "d"
 
-eval env (ECase e patterns) = Left "Vous devez compléter cette partie"
+eval env (ECase e patterns) = Left "e"
 
-eval env (EOufScope sym scope) = Left "Vous devez compléter cette partie"
+eval env (EOufScope sym scope) = Left "f"
 
-eval env (EOufMutability ident mutability) = Left "Vous devez compléter cette partie"
+eval env (EOufMutability ident mutability) = Left "g"
