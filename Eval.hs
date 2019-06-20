@@ -68,25 +68,11 @@ sexp2Exp (SList (func : [])) =
 -- Il faut écrire le cas pour les fonctions
 sexp2Exp (SList (func : args)) = do
   func' <- var2Symbol func
-  args' <- argsRecursif (args)
-  return (EApp (EVar func') args')
-  
- --Right (EApp (EVar (var2Symbol func)) (argsRecursif args))
+  x <- var2Symbol (head args)
+  y <- var2Symbol (last args)
+  return (EApp (EApp (EVar func') (EVar x)) (EVar y))
 
 sexp2Exp _ = Left "Erreur de syntaxe"
-argsRecursif :: [Sexp] -> Either Error Exp
-argsRecursif [] = Left "Function application must provide at least one parameter"
-argsRecursif (x:[]) = do
-  x' <- var2Symbol x
-  x'' <- Right (EVar (x'))
-  return x''
-argsRecursif (x:xs) = do
-  x' <- var2Symbol x
-  x'' <- Right (EVar (x'))
-  args' <- argsRecursif xs
-  return (EApp x'' args')
-
-  --Right (EApp (EVar x) (argsRecursif xs))
 
 
 
@@ -117,6 +103,14 @@ specialForm2Exp ((SSym "define") :
                     sym' <- var2Symbol (SSym sym)
                     a' <- sexp2Exp (SNum a)
                     return (EDefine sym' a')
+
+-- specialForm2Exp ((SSym "define") :
+--                   (SSym func) :
+--                   (SList body):
+--                   []) = do
+--                     func' <- var2Exp (SSym func)
+--                     body' <- sexp2Exp (SList body)
+--                     return (EDefine func' body')
 
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
@@ -221,10 +215,27 @@ eval env (EVar sym) = do
 
 eval env (ESet sym e) = Left "a"
   
-eval env (ELam sym body) = Left "b"
+eval env (ELam sym body) = Right (env, VLam sym body env)
+  --(env', body') <- eval (insertVars env0 sym) body
+  --return (env',body')
+  
+  
+  
+  --do
+  -- (env', body') <- eval env body
+  -- x <- insertVar env sym body'
+  -- return x
 
-eval env (EApp func arg) = Left "c"
-       
+eval env (EApp f arg) = do
+  (env', f') <- eval env f
+  (env'', arg') <- eval env' arg
+  case f' of
+    VPrim prim -> return (env'', prim arg')
+    VLam p body ferm -> do
+      (env', value') <- eval ((p, arg') : ferm) body
+      return (env', value')
+    _ -> Left "Not a fonction"
+
 eval env (ELet decls e) = Left "d"
 
 eval env (ECase e patterns) = Left "e"
