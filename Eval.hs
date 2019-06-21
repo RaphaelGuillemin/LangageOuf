@@ -68,9 +68,12 @@ sexp2Exp (SList (func : [])) =
 -- Il faut écrire le cas pour les fonctions
 sexp2Exp (SList (func : args)) = do
   func' <- var2Symbol func
-  x <- var2Symbol (head args)
-  y <- var2Symbol (last args)
-  return (EApp (EApp (EVar func') (EVar x)) (EVar y))
+  case args of
+    (x:xs:[]) -> do 
+              x' <- var2Symbol x 
+              y <- var2Symbol xs
+              return (EApp (EApp (EVar func') (EVar x')) (EVar y))
+    _ -> return (EVar func')
 
 sexp2Exp _ = Left "Erreur de syntaxe"
 
@@ -97,20 +100,20 @@ specialForm2Exp ((SSym "define") :
                  []) = Left "Syntax Error : No parameter"
 
 specialForm2Exp ((SSym "define") :
-                 (SSym sym) :
-                  (SNum a):
-                  []) = do
-                    sym' <- var2Symbol (SSym sym)
-                    a' <- sexp2Exp (SNum a)
-                    return (EDefine sym' a')
+                   (SSym sym) :
+                   (SNum a):
+                   []) = do
+                     func' <- var2Symbol (SSym sym)
+                     a' <- sexp2Exp (SNum a)
+                     return (EDefine func' a')
 
--- specialForm2Exp ((SSym "define") :
---                   (SSym func) :
---                   (SList body):
---                   []) = do
---                     func' <- var2Exp (SSym func)
---                     body' <- sexp2Exp (SList body)
---                     return (EDefine func' body')
+specialForm2Exp ((SSym "define") :
+                   (SSym func) :
+                   (SList body):
+                   []) = do
+                     func' <- var2Symbol (SSym func)
+                     body' <- specialForm2Exp (body)
+                     return (EDefine func' body')
 
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
