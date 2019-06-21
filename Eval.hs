@@ -66,11 +66,24 @@ sexp2Exp (SList (func : [])) =
   Left "Function application must provide at least one parameter"
 
 -- Il faut écrire le cas pour les fonctions
-sexp2Exp (SList (func : args)) = do
-  func' <- var2Symbol func
-  x <- var2Symbol (head args)
-  y <- var2Symbol (last args)
-  return (EApp (EApp (EVar func') (EVar x)) (EVar y))
+
+-- MA FONCTION SEXP2EXP QUI NE COMPILE PAS. IL FAUT CREER RECURSIVEMENT
+-- L'EXPRESSION EAPP
+sexp2Exp (SList (f:args)) = do
+  f' <- var2Symbol f
+  arg1 <- var2Symbol (head args)
+  arg2 <- var2Symbol (last args)
+  return (foldl (\args -> EApp (EVar f') args) 
+                (EApp (EVar f') (head args')) 
+                tail args')
+
+-- LA FONCTION QUE TU AVAIS ÉCRITE MAIS QUI APPELLE
+-- VAR2SYMBOL ET QUI CAUSE L'ERREUR DOIT ETRE UN IDENTIFICATEUR
+--sexp2Exp (SList (func : args)) = do
+  --func' <- var2Symbol func
+  --x <- var2Symbol (head args)
+  --y <- var2Symbol (last args)
+  --return (EApp (EApp (EVar func') (EVar x)) (EVar y))
 
 sexp2Exp _ = Left "Erreur de syntaxe"
 
@@ -104,13 +117,13 @@ specialForm2Exp ((SSym "define") :
                     a' <- sexp2Exp (SNum a)
                     return (EDefine sym' a')
 
--- specialForm2Exp ((SSym "define") :
---                   (SSym func) :
---                   (SList body):
---                   []) = do
---                     func' <- var2Exp (SSym func)
---                     body' <- sexp2Exp (SList body)
---                     return (EDefine func' body')
+specialForm2Exp ((SSym "define") :
+                   (SSym func) :
+                   (SList body):
+                   []) = do
+                     func' <- var2Symbol (SSym func)
+                     body' <- specialForm2Exp (body)
+                     return (EDefine func' body')
 
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
