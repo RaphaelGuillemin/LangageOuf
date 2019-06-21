@@ -69,31 +69,34 @@ sexp2Exp (SList (func : [])) =
 sexp2Exp (SList (func : args)) = do
   func' <- var2Symbol func
   case args of
-    (x:xs:[]) -> do 
-            x' <- var2Symbol x 
-            y <- var2Symbol xs
-            return (EApp (EApp (EVar func') (EVar x')) (EVar y))
+    -- (x:y:[]) -> do 
+    --         x' <- var2Symbol x 
+    --         y' <- var2Symbol y
+    --         return (EApp (EApp (EVar func') (EVar x')) (EVar y'))
     (SNum z:[]) -> do
             z' <- sexp2Exp (SNum z)
             return (EApp (EVar func') (z'))
-    -- (SList (SNum z : zs : [])) -> do 
-    --         z' <- sexp2Exp (SNum z)
-    --         zs' <- sexp2Exp (SList zs)
-    --         return (EApp)
+    (SSym z:[]) -> do
+            z' <- var2Symbol (SSym z)
+            return (EApp (EVar func') (EVar z'))
+    (z:zs) -> do 
+             z' <- sexp2Exp (last zs)
+             zs' <- sexp2Exp (SList(func:z:(init zs)))
+             return (EApp zs' z')
+
     _ -> return (EVar func')
 
 sexp2Exp _ = Left "Erreur de syntaxe"
---sexp2Exp(SList f:a1:args))
 
-appParams :: [Sexp] -> Either Error [Exp]
-appParams (a:[]) = case a of
-                  SNum a -> return $ (EInt (sexp2Exp (SNum a))
-                  SSym a -> return $ EVar (var2Symbol (SSym a))
-                  _ -> Left "N'est pas valide"
-appParams (a:args) = do
-                  a'<- appParams a
-                  args' <- appParams args
-                  return (a':args')
+-- appParams :: [Sexp] -> Either Error Exp
+-- appParams (a:[]) = case a of
+--                   SNum a -> return $ (EInt (sexp2Exp (SNum a))
+--                   SSym a -> return $ EVar (var2Symbol (SSym a))
+--                   _ -> Left "N'est pas valide"
+-- appParams (a:args) = do
+--                   a'<- appParams a
+--                   args' <- appParams args
+--                   return (a':args')
 
 
 -- Il faut compléter cette fonction qui gère
