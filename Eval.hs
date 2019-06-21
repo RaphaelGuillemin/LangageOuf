@@ -73,6 +73,9 @@ sexp2Exp (SList (func : args)) = do
               x' <- var2Symbol x 
               y <- var2Symbol xs
               return (EApp (EApp (EVar func') (EVar x')) (EVar y))
+    (SNum z:[]) -> do
+            z' <- sexp2Exp (SNum z)
+            return (EApp (EVar func') (z'))
     _ -> return (EVar func')
 
 sexp2Exp _ = Left "Erreur de syntaxe"
