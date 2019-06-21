@@ -66,37 +66,29 @@ sexp2Exp (SList (func : [])) =
   Left "Function application must provide at least one parameter"
 
 -- Il faut écrire le cas pour les fonctions
-sexp2Exp (SList (func : args)) = do
-  func' <- var2Symbol func
-  case args of
-    -- (x:y:[]) -> do 
-    --         x' <- var2Symbol x 
-    --         y' <- var2Symbol y
-    --         return (EApp (EApp (EVar func') (EVar x')) (EVar y'))
-    (SNum z:[]) -> do
-            z' <- sexp2Exp (SNum z)
-            return (EApp (EVar func') (z'))
-    (SSym z:[]) -> do
-            z' <- var2Symbol (SSym z)
-            return (EApp (EVar func') (EVar z'))
-    (z:zs) -> do 
-             z' <- sexp2Exp (last zs)
-             zs' <- sexp2Exp (SList(func:z:(init zs)))
-             return (EApp zs' z')
+sexp2Exp (SList (func : args)) = 
+  case (func : args ) of 
+    ((SSym sym) : args) -> do
+      func' <- var2Symbol func
+      case args of
+        (SNum z:[]) -> do
+                z' <- sexp2Exp (SNum z)
+                return (EApp (EVar func') (z'))
+        (SSym z:[]) -> do
+                z' <- var2Symbol (SSym z)
+                return (EApp (EVar func') (EVar z'))
+        (z:zs) -> do
+                z' <- sexp2Exp (last zs)
+                zs' <- sexp2Exp (SList(func:z:(init zs)))
+                return (EApp zs' z')
+        _ -> return (EVar func')
 
-    _ -> return (EVar func')
+    (func : args : []) -> do
+      expr <- sexp2Exp func
+      args' <- sexp2Exp args
+      return (EApp (expr) (args'))
 
 sexp2Exp _ = Left "Erreur de syntaxe"
-
--- appParams :: [Sexp] -> Either Error Exp
--- appParams (a:[]) = case a of
---                   SNum a -> return $ (EInt (sexp2Exp (SNum a))
---                   SSym a -> return $ EVar (var2Symbol (SSym a))
---                   _ -> Left "N'est pas valide"
--- appParams (a:args) = do
---                   a'<- appParams a
---                   args' <- appParams args
---                   return (a':args')
 
 
 -- Il faut compléter cette fonction qui gère
@@ -239,19 +231,10 @@ eval env (EVar sym) = do
 eval env (ESet sym e) = Left "a"
   
 eval env (ELam sym body) = Right (env, VLam sym body env)
-  --(env', body') <- eval (insertVars env0 sym) body
-  --return (env',body')
-  
-  
-  
-  --do
-  -- (env', body') <- eval env body
-  -- x <- insertVar env sym body'
-  -- return x
 
 eval env (EApp f arg) = do
   (env', f') <- eval env f
-  (env'', arg') <- eval env' arg
+  (env'', arg') <- eval env arg
   case f' of
     VPrim prim -> return (env'', prim arg')
     VLam p body ferm -> do
