@@ -139,56 +139,27 @@ specialForm2Exp ((SSym "let") :
                     exp' <- sexp2Exp exp
                     return (ELet vars' exp')
 
-
 specialForm2Exp ((SSym "data") :
                   (SSym datatype) :
-                  (SSym cons1) :
-                  (SList cons2) :
-                  []) = do
-                    type' <- var2Symbol (SSym datatype)
-                    cons1' <- (var2Symbol (SSym cons1), [])
-                    cons2' <- sequence (map (\(SList (const : types)) -> do
-                      const' <- var2Symbol const
-                      types' <-
-                        case types of 
-                        (x:[]) -> sequence $ (var2Symbol x):[]
-                        (x:xs:[]) -> (do
-                          x' <- var2Symbol x
-                          xs' <- sequence $ (var2Symbol xs):[]
-                          return (x':xs'))
-                        [] -> Right $ []
-                      return ((const', types'))) cons2)
-                    cons' <- (cons1':cons2')
-                    return (EData type' cons')
-                      --type1 <- var2Symbol (head types)
-                      --type2 <- var2Symbol (last types)
-                      --types' <- Right(type1:type2)
-                      --types' <- sequence (map (\(SList (sym : [])) -> do
-                       -- sym' <- var2Symbol sym
-                       -- return sym') types)
+                  cons1 :
+                  cons2 ) = do
+                     type' <- var2Symbol (SSym datatype)     
+                     cons1' <- dataConst cons1
+                     cons2' <- sequence (map dataConst cons2)
+                     cons' <- Right $ cons1':cons2'
+                     return (EData type' cons')                  
                       
-                
+specialForm2Exp _ = Left "Syntax Error : Unknown special form"    
 
--- specialForm2Exp ((SSym "data") :
---                   (SSym datatype) :
---                   (SList cons1) :
---                   (SList cons2) :
---                   []) = do
---                     type' <- var2Symbol (SSym datatype)
---                     cons1' <- sequence (map (\(SList (const : SList types : [])) -> do
---                       const' <- var2Symbol const
---                       types' <- sequence (map (\(SList (sym : [])) -> do
---                         sym' <- var2Symbol sym
---                         return sym') types)
---                       return ((const', types'))) cons1)
-                    
---                     return (EData (type') cons1')
-
-
-
-specialForm2Exp _ = Left "Syntax Error : Unknown special form"
-
-
+dataConst :: Sexp -> Either Error DataConstructor
+dataConst (SList ((SSym cons):[])) = do
+  cons' <- var2Symbol (SSym cons)
+  return (cons', [])
+dataConst (SList ((SSym cons):types)) = do
+  cons' <- var2Symbol (SSym cons)
+  types' <- sequence (map (\t -> var2Symbol t) types)
+  return (cons', types')
+dataConst _ = Left "Data invalid"
 
 --------------------------------------------------------------------------------
 -- L'évaluation
@@ -276,6 +247,7 @@ evalGlobal env (EDefine s e) =
     
 
 evalGlobal env (EData t cs) = Left "Vous devez compléter cette partie"
+
 evalGlobal env e = eval env e -- Autre que Define et Data, eval prend le relais
 
 -- L'évaluateur pour les expressions
