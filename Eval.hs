@@ -139,6 +139,53 @@ specialForm2Exp ((SSym "let") :
                     exp' <- sexp2Exp exp
                     return (ELet vars' exp')
 
+
+specialForm2Exp ((SSym "data") :
+                  (SSym datatype) :
+                  (SSym cons1) :
+                  (SList cons2) :
+                  []) = do
+                    type' <- var2Symbol (SSym datatype)
+                    cons1' <- (var2Symbol (SSym cons1), [])
+                    cons2' <- sequence (map (\(SList (const : types)) -> do
+                      const' <- var2Symbol const
+                      types' <-
+                        case types of 
+                        (x:[]) -> sequence $ (var2Symbol x):[]
+                        (x:xs:[]) -> (do
+                          x' <- var2Symbol x
+                          xs' <- sequence $ (var2Symbol xs):[]
+                          return (x':xs'))
+                        [] -> Right $ []
+                      return ((const', types'))) cons2)
+                    cons' <- (cons1':cons2')
+                    return (EData type' cons')
+                      --type1 <- var2Symbol (head types)
+                      --type2 <- var2Symbol (last types)
+                      --types' <- Right(type1:type2)
+                      --types' <- sequence (map (\(SList (sym : [])) -> do
+                       -- sym' <- var2Symbol sym
+                       -- return sym') types)
+                      
+                
+
+-- specialForm2Exp ((SSym "data") :
+--                   (SSym datatype) :
+--                   (SList cons1) :
+--                   (SList cons2) :
+--                   []) = do
+--                     type' <- var2Symbol (SSym datatype)
+--                     cons1' <- sequence (map (\(SList (const : SList types : [])) -> do
+--                       const' <- var2Symbol const
+--                       types' <- sequence (map (\(SList (sym : [])) -> do
+--                         sym' <- var2Symbol sym
+--                         return sym') types)
+--                       return ((const', types'))) cons1)
+                    
+--                     return (EData (type') cons1')
+
+
+
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
 
@@ -252,7 +299,7 @@ eval env (EApp f arg) = do
     VLam p body ferm -> do
       (env', value') <- eval ((p, arg') : ferm) body
       return (env, value')
-    _ -> Left "Not a fonction"
+    _ -> Left "Not a function"
 
 eval env (ELet decls e) = do
   decls' <- sequence(map(\(sym,exp) -> do
