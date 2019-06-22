@@ -127,6 +127,18 @@ specialForm2Exp ((SSym "define") :
                      body' <- specialForm2Exp (body)
                      return (EDefine func' body')
 
+specialForm2Exp ((SSym "let") :
+                  (SList vars) :
+                  (exp):
+                  []) = do
+                    vars' <- sequence(map (\(SList (sym : e : [])) -> do
+                    sym' <- var2Symbol sym
+                    e' <- sexp2Exp e
+                    return (sym',e')) vars)
+                    
+                    exp' <- sexp2Exp exp
+                    return (ELet vars' exp')
+
 specialForm2Exp _ = Left "Syntax Error : Unknown special form"
 
 
@@ -239,10 +251,16 @@ eval env (EApp f arg) = do
     VPrim prim -> return (env'', prim arg')
     VLam p body ferm -> do
       (env', value') <- eval ((p, arg') : ferm) body
-      return (env', value')
+      return (env, value')
     _ -> Left "Not a fonction"
 
-eval env (ELet decls e) = Left "d"
+eval env (ELet decls e) = do
+  decls' <- sequence(map(\(sym,exp) -> do
+    (ferm, exp') <- eval env exp
+    return (sym,exp')) decls)
+  env' <- Right (insertVars env decls')
+  (ferm, val) <- eval env' e
+  return (env, val)
 
 eval env (ECase e patterns) = Left "e"
 
