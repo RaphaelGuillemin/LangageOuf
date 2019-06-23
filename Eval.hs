@@ -199,6 +199,8 @@ type LexicalEnv = [(Symbol, Value)]
 -- et les instructions ouf
 type Env = LexicalEnv
 
+type TypeEnv = LexicalEnv
+
 -- lookup de la librairie standard utilise Maybe
 -- au lieu de Either
 lookup2 :: [(Symbol, a)] -> Symbol -> Either Error a
@@ -232,6 +234,10 @@ envEmpty = []
 env0 :: Env
 env0 = insertVars envEmpty primDef
 
+--intDef :: (Symbol, Value)
+--intDef = ("Int", int)
+--    where int =
+--      VPrim (\ (VInt x) -> (VInt x))
 
 -- L'évaluateur au niveau global
 -- L'évaluateur retourne une valeur et un environnement mis à jour
@@ -246,10 +252,22 @@ evalGlobal env (EDefine s e) =
     Right (e, v) -> Right (insertVar env s v, v)
     
 
-evalGlobal env (EData t cs) = Left "Vous devez compléter cette partie"
+evalGlobal env (EData t cs) = do
+  env' <- sequence $ map addTypeToEnv (env t cs)
+  return $ Right (env', VUnit)
+  
 
 evalGlobal env e = eval env e -- Autre que Define et Data, eval prend le relais
 
+addTypeToEnv :: Env -> Exp -> (Exp, [Exp]) -> Env
+addTypeToEnv env t (cs, []) = do
+  (cs', v) <- (cs, VData t cs [])
+  env' <- insertVars env (cs', v)
+  return env'
+addTypeToEnv env t (cs, _) = do
+  (cs', v) <- (cs, VData t cs [VUnit])
+  env' <- insertVars env (cs', v)
+  return env'
 -- L'évaluateur pour les expressions
 eval :: Env -> Exp -> Either Error (Env, Value)
 eval _ (EDefine _ _) = Left $ "Define must be a top level form"
