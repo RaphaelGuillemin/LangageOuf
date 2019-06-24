@@ -264,12 +264,47 @@ evalGlobal env (EData t cs) = do
     (x:xs) -> case x of
       "Int" -> do
         x' <- Right $ VData t const [VPrim (\(VInt x) -> (VInt x))]
-        xs' <- Right $ VData t const [VPrim (\(VInt x) -> (VInt x)), x']
+        xs' <- Right $ VData t const [VPrim (\(VData t cons val) -> (VData t cons val))]
         return (const, (VData t const [xs']))
       _ -> Left "Type inconnu"
     _ -> Left "Constructeur invalide") cs)
   env' <- Right (insertVars env cs')
   return (env', VUnit)
+
+-- evalGlobal env (EData t cs) = do
+--   cs' <- sequence (map (\(const, typelist) -> case typelist of
+--     [] -> Right ((const, VData t const [VUnit]))
+--     (x:[]) -> case x of
+--       "Int" -> Right ((const, (VData t const [VPrim (\(VInt x) -> (VInt x))])))
+--     (x:xs) -> do
+--         x' <- Right $ VData t const [VPrim (\(VInt x) -> VPrim (\(VInt y) -> VData t const [(VInt x),(VInt y)]))]
+--         xs' <- Right $ VData t const [VPrim (\(VInt x) -> (VInt x))]
+--         return (const, (VData t const [x', xs']))) cs)
+--         --[VPrim (\(VData t cons val) -> VPrim (\ (VInt x) -> (VData t cons [VInt x])))]
+--         --[VPrim (\(VInt x) -> VPrim (\ (VData t cons val) -> (VData t cons [VInt x])))]
+--         --xs' <- Right $ VData t const [VPrim (\(VData t cons val) -> (VData t cons val))]
+--         --return (const, (VData t const [x', xs'])) cs)
+--       --t -> 
+--     --_ -> Left "Constructeur invalide") cs)
+--   env' <- Right (insertVars env cs')
+--   return (env', VUnit)
+
+--   evalGlobal env (EData t cs) = case cs of
+--     (const:[]) -> Right ((const, VData t const [VUnit]))
+--     (const1:const2) -> do
+--       const1' <- constToData t const const1
+
+-- -- constToData :: Symbol -> [(Symbol, [Symbol])] -> [(Symbol, Value)]
+-- constToData 
+
+
+-- constToData (const, []) = (const, VData t const [VUnit])
+-- constToData (const, (c:[])) = case x of
+--   "Int" -> (const, (VData t const [VPrim (\(VInt x) -> (VInt x))]))
+-- constToData (const, (c:cs)) = do
+--   (const', c') <- constToData (const, c)
+--   cs' <- VData t const [VData t constToData (c:cs)]
+
   
 
 evalGlobal env e = eval env e -- Autre que Define et Data, eval prend le relais
@@ -289,7 +324,8 @@ evalGlobal env e = eval env e -- Autre que Define et Data, eval prend le relais
 -- addTypeToEnv env t (cs, _) = do
 --   (cs', v) <- (cs, VData t cs [VUnit])
 --   env' <- insertVars env (cs', v)
---   return env'
+--   return env
+'
 -- L'évaluateur pour les expressions
 eval :: Env -> Exp -> Either Error (Env, Value)
 eval _ (EDefine _ _) = Left $ "Define must be a top level form"
@@ -313,8 +349,9 @@ eval env (EApp f arg) = do
       return (env, value')
     VData t1 t2 cs -> case (head cs) of
       VPrim prim -> return (env'', prim arg')
+      VData t1 t2 cs' -> return (env'', (head cs'))
       _ -> Left "Constructor is not a function"
-    _ -> Left "Not a function"
+    _ -> Left "Not a function"    
 
 eval env (ELet decls e) = do
   decls' <- sequence(map(\(sym,exp) -> do

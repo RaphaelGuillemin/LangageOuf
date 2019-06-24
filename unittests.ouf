@@ -102,13 +102,13 @@
 
 (data Bool (True) (False))
 (data Maybe (Nothing) (Just Int))
---(data List (Nil) (Cons Int List))
+(data List (Nil) (Cons Int List))
 
 -- Deux objets fait des mêmes constructeurs avec les mêmes arguments sont
 -- identiques
 (:check-equal: True True)
 (:check-equal: False False)
-(:check-equal: (Cons 3 Nil) (Cons 3 Nil))
+(:check-equal: (Cons 33 Nil) (Cons 3 Nil))
 (:check-equal: Nothing Nothing)
 (:check-equal: (Cons 3 (Cons 2 Nil))
                (let ((a (Cons 2 Nil)) (b (Cons 3 a))) b))
