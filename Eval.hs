@@ -199,7 +199,7 @@ type LexicalEnv = [(Symbol, Value)]
 -- et les instructions ouf
 type Env = LexicalEnv
 
-type TypeEnv = LexicalEnv
+
 
 -- lookup de la librairie standard utilise Maybe
 -- au lieu de Either
@@ -228,11 +228,15 @@ primDef = [("+", prim (+)),
   where prim op =
           VPrim (\ (VInt x) -> VPrim (\ (VInt y) -> VInt (x `op` y)))
 
+
 envEmpty :: Env
 envEmpty = []
 
 env0 :: Env
 env0 = insertVars envEmpty primDef
+
+envTypes :: Env
+envTypes = envEmpty
 
 --intDef :: (Symbol, Value)
 --intDef = ("Int", int)
@@ -253,21 +257,39 @@ evalGlobal env (EDefine s e) =
     
 
 evalGlobal env (EData t cs) = do
-  env' <- sequence $ map addTypeToEnv (env t cs)
-  return $ Right (env', VUnit)
+  cs' <- sequence (map (\(const, typelist) -> case typelist of
+    [] -> Right ((const, VData t const [VUnit]))
+    (x:[]) -> case x of
+      "Int" -> Right ((const, (VData t const [VPrim (\(VInt x) -> (VInt x))])))
+    (x:xs) -> case x of
+      "Int" -> do
+        x' <- Right $ VData t const [VPrim (\(VInt x) -> (VInt x))]
+        xs' <- Right $ VData t const [VPrim (\(VInt x) -> (VInt x)), x']
+        return (const, (VData t const [xs']))
+      _ -> Left "Type inconnu"
+    _ -> Left "Constructeur invalide") cs)
+  env' <- Right (insertVars env cs')
+  return (env', VUnit)
   
 
 evalGlobal env e = eval env e -- Autre que Define et Data, eval prend le relais
 
-addTypeToEnv :: Env -> Exp -> (Exp, [Exp]) -> Env
-addTypeToEnv env t (cs, []) = do
-  (cs', v) <- (cs, VData t cs [])
-  env' <- insertVars env (cs', v)
-  return env'
-addTypeToEnv env t (cs, _) = do
-  (cs', v) <- (cs, VData t cs [VUnit])
-  env' <- insertVars env (cs', v)
-  return env'
+-- consToValue :: Type -> DataConstructor -> Either Error (Symbol, Value)
+-- consToValue t (cs, []) = Right $ (cs, (VData t cs []))
+-- consToValue t (cs, list) = Right $ (cs, (VPrim (VData t cs)))
+-- consToValue t (_,_) = Left "Constructeur non reconnu"
+
+
+
+-- addTypeToEnv :: Env -> Exp -> (Exp, [Exp]) -> Env
+-- addTypeToEnv env t (cs, []) = do
+--   (cs', v) <- (cs, VData t cs [])
+--   env' <- insertVars env (cs', v)
+--   return env'
+-- addTypeToEnv env t (cs, _) = do
+--   (cs', v) <- (cs, VData t cs [VUnit])
+--   env' <- insertVars env (cs', v)
+--   return env'
 -- L'évaluateur pour les expressions
 eval :: Env -> Exp -> Either Error (Env, Value)
 eval _ (EDefine _ _) = Left $ "Define must be a top level form"
@@ -289,6 +311,9 @@ eval env (EApp f arg) = do
     VLam p body ferm -> do
       (env', value') <- eval ((p, arg') : ferm) body
       return (env, value')
+    VData t1 t2 cs -> case (head cs) of
+      VPrim prim -> return (env'', prim arg')
+      _ -> Left "Constructor is not a function"
     _ -> Left "Not a function"
 
 eval env (ELet decls e) = do
